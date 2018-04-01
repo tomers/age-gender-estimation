@@ -1,22 +1,26 @@
-import os
+# import os
+import random
 import cv2
 import dlib
 import numpy as np
 import argparse
+import time
 from contextlib import contextmanager
-from wide_resnet import WideResNet
-from keras.utils.data_utils import get_file
 
-pretrained_model = "https://github.com/yu4u/age-gender-estimation/releases/download/v0.5/weights.18-4.06.hdf5"
-modhash = '89f56a39a78454e96379348bddd78c0d'
+
+# from wide_resnet import WideResNet
+# from keras.utils.data_utils import get_file
+
+# pretrained_model = "https://github.com/yu4u/age-gender-estimation/releases/download/v0.5/weights.18-4.06.hdf5"
+# modhash = '89f56a39a78454e96379348bddd78c0d'
 
 
 def get_args():
     parser = argparse.ArgumentParser(description="This script detects faces from web cam input, "
                                                  "and estimates age and gender for the detected faces.",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("--weight_file", type=str, default=None,
-                        help="path to weight file (e.g. weights.18-4.06.hdf5)")
+    # parser.add_argument("--weight_file", type=str, default=None,
+    #                     help="path to weight file (e.g. weights.18-4.06.hdf5)")
     parser.add_argument("--depth", type=int, default=16,
                         help="depth of network")
     parser.add_argument("--width", type=int, default=8,
@@ -58,23 +62,64 @@ def yield_images():
             yield img
 
 
-def main():
-    args = get_args()
-    depth = args.depth
-    k = args.width
-    weight_file = args.weight_file
+old_time = time.time()
+delay_sec = 3
 
-    if not weight_file:
-        weight_file = get_file("weights.18-4.06.hdf5", pretrained_model, cache_subdir="pretrained_models",
-                               file_hash=modhash, cache_dir=os.path.dirname(os.path.abspath(__file__)))
+
+def is_enough_time_passed() -> bool:
+    global old_time
+    if time.time() < old_time + delay_sec:
+        return False
+
+    old_time = time.time()
+    return True
+
+
+titles = [
+    '',  # empty
+    'Bad',
+    'Sad',
+    'Happy',
+    'Beautiful',
+    'Ugly',
+    'Fat',
+    'Super',
+    'Master',
+    'King',
+    'Nervous',
+    'Van',
+]
+name = 'Lousky'
+last_title: str = name
+
+
+def get_random_title() -> str:
+    global last_title
+
+    if is_enough_time_passed():
+        title = random.choice(titles)
+        last_title = f'{title} {name}'.strip()
+
+    return last_title
+
+
+def main():
+    # args = get_args()
+    # depth = args.depth
+    # k = args.width
+    # weight_file = args.weight_file
+
+    # if not weight_file:
+    #     weight_file = get_file("weights.18-4.06.hdf5", pretrained_model, cache_subdir="pretrained_models",
+    #                            file_hash=modhash, cache_dir=os.path.dirname(os.path.abspath(__file__)))
 
     # for face detection
     detector = dlib.get_frontal_face_detector()
 
     # load model and weights
     img_size = 64
-    model = WideResNet(img_size, depth=depth, k=k)()
-    model.load_weights(weight_file)
+    # model = WideResNet(img_size, depth=depth, k=k)()
+    # model.load_weights(weight_file)
 
     for img in yield_images():
         input_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -96,15 +141,16 @@ def main():
                 faces[i, :, :, :] = cv2.resize(img[yw1:yw2 + 1, xw1:xw2 + 1, :], (img_size, img_size))
 
             # predict ages and genders of the detected faces
-            results = model.predict(faces)
-            predicted_genders = results[0]
-            ages = np.arange(0, 101).reshape(101, 1)
-            predicted_ages = results[1].dot(ages).flatten()
+            # results = model.predict(faces)
+            # predicted_genders = results[0]
+            # ages = np.arange(0, 101).reshape(101, 1)
+            # predicted_ages = results[1].dot(ages).flatten()
 
             # draw results
             for i, d in enumerate(detected):
-                label = "{}, {}".format(int(predicted_ages[i]),
-                                        "F" if predicted_genders[i][0] > 0.5 else "M")
+                # label = "{}, {}".format(int(predicted_ages[i]),
+                #                         "F" if predicted_genders[i][0] > 0.5 else "M")
+                label = get_random_title()
                 draw_label(img, (d.left(), d.top()), label)
 
         cv2.imshow("result", img)
